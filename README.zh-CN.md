@@ -178,11 +178,13 @@ models:
 
 ### 可选：身份认证系统配置 (Casdoor)
 
-如果没有特殊要求(如：对接第三方认证系统)，请直接 跳过此步骤，请跳过此步骤，请跳过此步骤。
+<span style="color: red; font-weight: bold;">如果没有特殊要求(如：对接第三方认证系统)，请直接 跳过此步骤，请跳过此步骤，请跳过此步骤。</span>
 
-第一次测试试用，也请直接 跳过此步骤，请跳过此步骤，请跳过此步骤。
+<span style="color: red; font-weight: bold;">第一次测试试用，也请直接 跳过此步骤，请跳过此步骤，请跳过此步骤。</span>
 
-通过以下地址访问 Casdoor 管理界面:
+<span style="color: red; font-weight: bold;">如果您不知道应不应该跳过此步骤，请直接跳过此步骤</span>
+
+通过以下地址访问 Casdoor 管理界面(请确保您已经清晰的认识到，你是在自定义配置认证系统或者对接第三方认证系统):
 
 ```
 # 安装结束后提示的第一个url
@@ -197,10 +199,10 @@ http://{COSTRICT_BACKEND}:{PORT_CASDOOR}
 
 1. 安装 CoStrict VSCode 扩展
 2. 打开扩展设置中的"提供商"页面
-3. 选择 API 提供商为"CoStrict"
-4. 配置后端服务地址:
+3. 选择 API 提供商为"CoStrict"(首次登录可能已经默认选择了)
+4. 配置后端服务地址(也就是安装脚本输出的第三个Url):
    ```
-   CoStrict Base URL: {COSTRICT_BACKEND_BASEURL}
+   CoStrict Base URL: http://****:****
    ```
 5. 点击"登录 CoStrict"完成身份验证
 

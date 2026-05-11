@@ -2,6 +2,8 @@
 
 此文档是从0配置casdoor,本教程大部分配置在安装后已经配置成功了，如果需要添加用户，可以见 **添加用户**
 
+<span style="color: red; font-weight: bold;">再次提醒，本教程是从0开始配置casdoor的示例,目前，casdoor已经内置了costrict相关的组织和用户,你只需要往costrict组织中添加用户即可</span>(组织和用户名称可能由于版本变更变化,只要你看到组织有两个，built-in组织是管理组不用管，另一个组织就是costrict用户的组织)
+
 ## 配置页面
 
 ### 配置页面访问
@@ -32,7 +34,7 @@
 ![image-20260120102644577](./casdoor-img/config-images/2-add_app-2.png)
 
 
-> 客户端ID和客户端密钥对应部署目录`configure.sh`  `OIDC_CLIENT_ID` `OIDC_CLIENT_SECRET`两个变量,如：
+> 客户端ID和客户端密钥对应部署目录`configure.sh`  `OIDC_CLIENT_ID` `OIDC_CLIENT_SECRET`两个变量(注意,这两个id和oidc配置中的需要一致,请看部署目录oidc-auth相关配置),如：
 
 ```
 9e2fc5d4fbcd52ef4f6f
@@ -77,4 +79,10 @@ http://ip:port/oidc-auth/api/v1/manager/login/callback
 
 如果你需要批量导入用户，请查看官方教程：[从XLSX文件导入用户](https://www.casdoor.org/zh/docs/user/overview/#%E4%BB%8Exlsx%E6%96%87%E4%BB%B6%E5%AF%BC%E5%85%A5%E7%94%A8%E6%88%B7)
 
-> 配置结束，之后就可以使用demo用户登录costrict了(注意是costrict不是casdoor)，如需更多配置，如：oauth,sms,github等配置，参考：[v4 casdoor配置](./casdoor.md)
+> 配置结束，之后就可以使用demo用户登录costrict了(注意是登录costrict不是casdoor)
+
+## 对接第三方认证系统
+
+![](./casdoor-img/config-images/5-provider-add.png)
+
+请根据实际情况配置，其中 客户端ID, 客户端密钥: 和组织中设置的一样即可。

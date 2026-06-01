@@ -2,7 +2,7 @@
 #---------------------------------------------------------
 # CoStrict服务端设置，http://${COSTRICT_BACKEND}:${PORT_APISIX_ENTRY} 将成为为你的BaseUrl
 #---------------------------------------------------------
-COSTRICT_BACKEND="11111"
+COSTRICT_BACKEND=""
 PORT_APISIX_ENTRY="39080"
 # nacos管理端口,如果对此不了解，就不需要修改.
 PORT_NACOS="31808"

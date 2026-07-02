@@ -32,7 +32,7 @@ scrape_configs:
     # Override the global default and scrape targets from this job every 5 seconds.
     scrape_interval: 5s
     static_configs:
-      - targets: ["localhost:{{PORT_PROMETHEUS}}"]
+      - targets: ["localhost:9090"]
   - job_name: "apisix"
     scrape_interval: 5s
     metrics_path: "/apisix/prometheus/metrics"

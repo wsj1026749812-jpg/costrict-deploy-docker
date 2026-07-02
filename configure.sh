@@ -50,6 +50,8 @@ PORT_CASDOOR="39009"
 PORT_HIGRESS_CONTROL="38001"
 PORT_APISIX_API="39180"
 PORT_GRAFANA="33000"
+PORT_REDIS="36379"
+PORT_PROMETHEUS="39090"
 PORT_ES="39200"
 
 #---------------------------------------------------------
@@ -122,6 +124,28 @@ OIDC_TOKEN_ENDPOINT=""
 #   以下设置请根据部署环境信息进行修改
 #-------------------------------------------------------------------------------
 # VSCODE扩展连接诸葛神码后端时使用的入口URL地址
-# 一般会利用DNS及应用发布设备将该地址映射到 http://${COSTRICT_BACKEND}:${PORT_APISIX_ENTRY}
+# 一般会利用DNS及应用发布设备将该地址映射到 Ingress 暴露的 APISIX 入口
 # 诸葛神码后端的IP地址，`deploy.sh --auto-ip`可自动获取
 COSTRICT_BACKEND_BASEURL="http://${COSTRICT_BACKEND}:${PORT_APISIX_ENTRY}"
+
+#---------------------------------------------------------
+# Kubernetes 设置
+#---------------------------------------------------------
+# 所有资源部署到该命名空间
+K8S_NAMESPACE="costrict"
+# Ingress 控制器类名，请按集群实际情况修改，常见值：nginx、traefik
+K8S_INGRESS_CLASS_NAME="nginx"
+# 通过 Ingress 暴露的域名。请提前配置 DNS 或 /etc/hosts 指向 Ingress 入口 IP。
+K8S_APISIX_HOST="costrict.local"
+K8S_NACOS_HOST="nacos.costrict.local"
+K8S_GRAFANA_HOST="grafana.costrict.local"
+K8S_PROMETHEUS_HOST="prometheus.costrict.local"
+# K8s Ingress 模式下客户端访问后端的 Base URL
+COSTRICT_BACKEND_BASEURL="http://${K8S_APISIX_HOST}"
+# PVC 容量。默认使用集群默认 StorageClass；如果集群没有默认 StorageClass，需要先创建或手工修改 PVC。
+K8S_PVC_ETCD_SIZE="10Gi"
+K8S_PVC_REDIS_SIZE="5Gi"
+K8S_PVC_POSTGRES_SIZE="50Gi"
+K8S_PVC_PORTAL_SIZE="5Gi"
+K8S_PVC_CHATRAG_LOGS_SIZE="10Gi"
+K8S_PVC_OIDC_AUTH_LOGS_SIZE="5Gi"

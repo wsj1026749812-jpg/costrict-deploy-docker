@@ -23,6 +23,8 @@ else
     echo "WARN: configure.sh not found: ${CONFIGURE_SH}" >&2
 fi
 
+export COSTRICT_DEPLOY_DIR="${COSTRICT_DEPLOY_DIR:-${BASE_DIR}}"
+
 # Load image environment variables from scripts/images.list (KEY=VALUE format)
 # Lines containing '=' are treated as variable definitions; others are skipped
 readonly IMAGES_LIST="${SCRIPT_DIR}/newest-images.list"

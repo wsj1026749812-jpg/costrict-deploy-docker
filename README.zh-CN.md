@@ -4,13 +4,13 @@
 
 ## 项目概述
 
-CoStrict 后端部署工具是基于 Docker Compose 的企业级 AI 代码助手后端服务部署解决方案。该项目提供了完整的微服务架构，包含 AI 网关、身份认证、代码分析、聊天服务等核心组件，支持私有化部署和云端服务两种模式。
+CoStrict 后端部署工具是基于 Kubernetes 的企业级 AI 代码助手后端服务部署解决方案。该项目提供了完整的微服务架构，包含 AI 网关、身份认证、代码分析、聊天服务等核心组件，支持私有化部署和云端服务两种模式。
 
 > 查看此项目的部署架构，部署的服务器要求、环境要求、模型要求、模型下载地址等，请访问 [前言](./docs/foreword.zh-CN.md)
 
 ## 快速开始
 
-> 开始前，请确保你对Linux命令行又一定的了解，请确保你已经根据软件要求安装好了Docker 和 Compose.
+> 开始前，请确保你对 Linux 命令行有一定了解，并已经准备好可访问的 Kubernetes 集群和 kubectl。
 
 ### 1. 获取部署配置
 
@@ -41,7 +41,7 @@ cd ./costrict-server
 
 ### 2. 准备后端服务镜像
 
-注意，如果你是离线环境部署，继续查看本节，如果你的服务器能正常访问整个互联网(包括docker.io、quay.io、docker.elastic.co等),可以直接跳过这个步骤，部署时会自动拉取所有镜像。
+注意，如果你是离线环境部署，继续查看本节；如果 Kubernetes 节点能正常访问整个互联网(包括 docker.io、quay.io、docker.elastic.co 等)，可以直接跳过这个步骤，部署时会自动拉取所有镜像。
 
 CoStrict后端需要的镜像，可以查看 `scripts/newest-images.list` 文件获取完整列表，你也可以手动拉取这些镜像
 
@@ -55,7 +55,7 @@ https://pan.baidu.com/s/5H0ppvaTja4g2MKZs0Ki1-g
 
 当前最新版本: v0.0.3
 
-下载后所有的tar包并复制到服务器的某个目录(比如/root/images)，运行：
+多节点集群推荐先将镜像推送到内网镜像仓库，然后修改 `scripts/newest-images.list` 中的镜像地址。临时离线验证时，也可以将所有 tar 包复制到每个 Kubernetes 节点，并导入到节点使用的容器运行时：
 
 ```bash
 # /root/images 就是tar包所在目录,请注意替换
@@ -81,6 +81,24 @@ vim configure.sh
 COSTRICT_BACKEND=""
 ```
 
+如需调整 Kubernetes 命名空间，可修改：
+
+```sh
+K8S_NAMESPACE="costrict"
+```
+
+多节点部署默认使用 PVC 和 Ingress。请确认集群已有默认 StorageClass 和可用 Ingress 控制器，并按实际域名修改：
+
+```sh
+K8S_INGRESS_CLASS_NAME="nginx"
+K8S_APISIX_HOST="costrict.example.com"
+K8S_NACOS_HOST="nacos.costrict.example.com"
+K8S_GRAFANA_HOST="grafana.costrict.example.com"
+K8S_PROMETHEUS_HOST="prometheus.costrict.example.com"
+```
+
+如果使用内网镜像仓库，请修改 `scripts/newest-images.list`，将镜像地址替换为内网仓库地址，然后重新执行 `bash costrict.sh prepare`。
+
 
 ### 4. 服务部署
 
@@ -89,6 +107,29 @@ COSTRICT_BACKEND=""
 ```sh
 bash costrict.sh install
 ```
+
+部署脚本会生成 `k8s/costrict.yaml`，创建 ConfigMap/PVC/Ingress，并通过 `kubectl apply` 创建资源。查看 Pod 状态：
+
+```sh
+kubectl -n costrict get pods
+```
+
+查看 PVC 和 Ingress：
+
+```sh
+kubectl -n costrict get pvc
+kubectl -n costrict get ingress
+```
+
+卸载 Kubernetes 资源：
+
+```sh
+bash costrict.sh down
+```
+
+说明：当前 Kubernetes 清单复刻原 `docker-compose.yml.tpl` 中实际启动的服务。仓库中保留了 `quota-manager` 的历史配置和 APISIX 路由脚本，但原 Docker Compose 未启动 `quota-manager` 后端服务，且该配置仍引用已移除的 `higress`，因此默认清单未纳入该服务。
+
+注意：执行 `bash costrict.sh down` 会删除 Kubernetes 资源；PVC 数据是否保留取决于集群 StorageClass 的回收策略。
 
 运行结束后，会提示类似的内容,请找个文本文件记录下来：
 

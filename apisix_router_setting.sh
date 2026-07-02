@@ -2,6 +2,8 @@
 # ./apisix_router_setting.sh             
 # ./apisix_router_setting.sh --skip-wait
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 SKIP_WAIT=false
 for arg in "$@"; do
   case "$arg" in
@@ -9,10 +11,11 @@ for arg in "$@"; do
   esac
 done
 
-source ./configure.sh
+source "${SCRIPT_DIR}/configure.sh"
 export APISIX_ADDR="127.0.0.1:${PORT_APISIX_API}"
 export AUTH="X-API-KEY: ${APIKEY_APISIX_ADMIN}"
 export TYPE="Content-Type: application/json"
+K8S_NAMESPACE="${K8S_NAMESPACE:-costrict}"
 
 export OIDC_CLIENT_ID="${OIDC_CLIENT_ID}"
 export OIDC_CLIENT_SECRET="${OIDC_CLIENT_SECRET}"
@@ -43,17 +46,21 @@ wait_for_apisix() {
 }
 
 if [ "$SKIP_WAIT" = false ]; then
+  kubectl -n "${K8S_NAMESPACE}" port-forward svc/apisix "${PORT_APISIX_API}:9180" >/tmp/costrict-apisix-port-forward.log 2>&1 &
+  PF_PID=$!
+  trap 'kill ${PF_PID} >/dev/null 2>&1 || true' EXIT
+  sleep 2
   wait_for_apisix
 fi
 
-./scripts/apisix_router/ai-gateway.sh
-./scripts/apisix_router/casdoor.sh
-./scripts/apisix_router/chatrag.sh
-./scripts/apisix_router/completion-v2.sh
-./scripts/apisix_router/costrict-apps.sh
-./scripts/apisix_router/credit-manager.sh
-./scripts/apisix_router/issue.sh
-./scripts/apisix_router/oidc-auth.sh
-./scripts/apisix_router/quota-manager.sh
+"${SCRIPT_DIR}/scripts/apisix_router/ai-gateway.sh"
+"${SCRIPT_DIR}/scripts/apisix_router/casdoor.sh"
+"${SCRIPT_DIR}/scripts/apisix_router/chatrag.sh"
+"${SCRIPT_DIR}/scripts/apisix_router/completion-v2.sh"
+"${SCRIPT_DIR}/scripts/apisix_router/costrict-apps.sh"
+"${SCRIPT_DIR}/scripts/apisix_router/credit-manager.sh"
+"${SCRIPT_DIR}/scripts/apisix_router/issue.sh"
+"${SCRIPT_DIR}/scripts/apisix_router/oidc-auth.sh"
+"${SCRIPT_DIR}/scripts/apisix_router/quota-manager.sh"
 
 echo "APISIX routes setup completed."

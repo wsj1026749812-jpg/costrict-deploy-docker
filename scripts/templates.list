@@ -7,4 +7,4 @@ config/grafana/provisioning/datasources/all.yaml.tpl
 config/portal/nginx.conf.tpl
 config/prometheus/prometheus.yml.tpl
 config/quota-manager/app-conf.yml.tpl
-docker-compose.yml.tpl
+k8s/costrict.yaml.tpl

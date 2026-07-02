@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# costrict.sh — Costrict 部署管理入口脚本
+# costrict.sh — Costrict Kubernetes 部署管理入口脚本
 # 用法: ./costrict.sh <command> [options]
 # 命令:
-#   check    — 检查环境依赖（docker、docker-compose 等）
+#   check    — 检查环境依赖（kubectl、Kubernetes 集群等）
 #   prepare  — 准备部署环境（生成配置、解析模板等）
 #   install  — 完整安装（prepare + 启动所有服务）
-#   down     — 停止并移除所有容器
+#   down     — 删除 Kubernetes 资源
 #   up       — 启动所有服务
 #   info     — 打印访问地址等提示信息
 # =============================================================================
@@ -20,7 +20,118 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/logger/log_tool.sh
 source "${SCRIPT_DIR}/scripts/logger/log_tool.sh"
 
+load_config() {
+  if [[ -f "${SCRIPT_DIR}/configure.sh" ]]; then
+    # shellcheck source=configure.sh
+    source "${SCRIPT_DIR}/configure.sh"
+  else
+    die "configure.sh 不存在，请在 configure.sh 中配置后重试。"
+  fi
 
+  export COSTRICT_DEPLOY_DIR="${COSTRICT_DEPLOY_DIR:-${SCRIPT_DIR}}"
+  export K8S_NAMESPACE="${K8S_NAMESPACE:-costrict}"
+  export K8S_APISIX_HOST="${K8S_APISIX_HOST:-${COSTRICT_BACKEND}}"
+}
+
+apply_configmap() {
+  local name="$1"
+  shift
+  kubectl -n "${K8S_NAMESPACE}" create configmap "${name}" "$@" --dry-run=client -o yaml | kubectl apply -f -
+}
+
+apply_k8s_configmaps() {
+  info "正在创建/更新 Kubernetes ConfigMap..."
+
+  kubectl create namespace "${K8S_NAMESPACE}" --dry-run=client -o yaml | kubectl apply -f -
+
+  apply_configmap costrict-apisix-config \
+    --from-file=config.yaml="${SCRIPT_DIR}/config/apisix/config.yaml"
+  apply_configmap costrict-model-proxy-config \
+    --from-file=config.yaml="${SCRIPT_DIR}/config/model-proxy/config.yaml"
+  apply_configmap costrict-portal-nginx-config \
+    --from-file=nginx.conf="${SCRIPT_DIR}/config/portal/nginx.conf"
+  apply_configmap costrict-chat-rag-config \
+    --from-file=chat-api.yaml="${SCRIPT_DIR}/config/chat-rag/chat-api.yaml" \
+    --from-file=rules.yaml="${SCRIPT_DIR}/config/chat-rag/rules.yaml"
+  apply_configmap costrict-code-completion-config \
+    --from-file=config.yaml="${SCRIPT_DIR}/config/code-completion/config.yaml"
+  apply_configmap costrict-prometheus-config \
+    --from-file=prometheus.yml="${SCRIPT_DIR}/config/prometheus/prometheus.yml"
+  apply_configmap costrict-grafana-config \
+    --from-file=grafana.ini="${SCRIPT_DIR}/config/grafana/config/grafana.ini"
+  apply_configmap costrict-grafana-provisioning-datasources \
+    --from-file=all.yaml="${SCRIPT_DIR}/config/grafana/provisioning/datasources/all.yaml"
+  apply_configmap costrict-grafana-provisioning-dashboards \
+    --from-file=all.yaml="${SCRIPT_DIR}/config/grafana/provisioning/dashboards/all.yaml"
+  apply_configmap costrict-grafana-dashboards \
+    --from-file=apisix-grafana-dashboard.json="${SCRIPT_DIR}/config/grafana/dashboards/apisix-grafana-dashboard.json"
+  apply_configmap costrict-postgres-initdb \
+    --from-file="${SCRIPT_DIR}/config/postgres/initdb.d"
+
+  success "ConfigMap 创建/更新完成。"
+}
+
+sync_portal_assets() {
+  local portal_dir="${SCRIPT_DIR}/data/portal"
+  if [[ ! -d "${portal_dir}" ]]; then
+    warn "portal 静态资源目录不存在，跳过同步：${portal_dir}"
+    return 0
+  fi
+
+  if ! find "${portal_dir}" -mindepth 1 -maxdepth 1 | read -r _; then
+    warn "portal 静态资源目录为空，跳过同步：${portal_dir}"
+    return 0
+  fi
+
+  local pod
+  pod="$(kubectl -n "${K8S_NAMESPACE}" get pod -l app=portal -o jsonpath='{.items[0].metadata.name}')"
+  if [[ -z "${pod}" ]]; then
+    warn "未找到 portal Pod，跳过静态资源同步。"
+    return 0
+  fi
+
+  info "正在同步 portal 静态资源到 PVC..."
+  kubectl -n "${K8S_NAMESPACE}" cp "${portal_dir}/." "${pod}:/var/www"
+  success "portal 静态资源同步完成。"
+}
+
+prepare_portal_assets() {
+  local source_dir="${SCRIPT_DIR}/config/portal/static_file"
+  local target_dir="${SCRIPT_DIR}/data/portal"
+  mkdir -p "${target_dir}"
+
+  local asset
+  for asset in costrict costrict-static wasm; do
+    if [[ -e "${source_dir}/${asset}" && ! -e "${target_dir}/${asset}" ]]; then
+      cp -R "${source_dir}/${asset}" "${target_dir}/"
+    fi
+  done
+
+  chmod -R +r "${target_dir}" 2>/dev/null || true
+}
+
+wait_k8s_rollout() {
+  local deployments=(
+    etcd
+    redis
+    postgres
+    nacos
+    apisix
+    model-proxy
+    portal
+    chat-rag
+    credit-manager
+    oidc-auth
+    code-completion
+    casdoor
+    prometheus
+    grafana
+  )
+
+  for deployment in "${deployments[@]}"; do
+    kubectl -n "${K8S_NAMESPACE}" rollout status "deployment/${deployment}" --timeout=300s || return 1
+  done
+}
 
 # -----------------------------------------------------------------------------
 # check — 检查运行环境
@@ -43,21 +154,17 @@ cmd_check() {
     fi
   }
 
-  _check_cmd docker
-  if command -v docker-compose &>/dev/null; then
-    local ver
-    ver="$(docker-compose --version 2>&1 | head -n1)"
-    success "docker-compose 已安装：${ver}"
-  elif docker compose version &>/dev/null 2>&1; then
-    success "docker compose 插件可用：$(docker compose version 2>&1 | head -n1)"
+  _check_cmd kubectl
+  if kubectl cluster-info &>/dev/null; then
+    success "Kubernetes 集群连接正常。"
   else
-    error "docker-compose / docker compose 均不可用，请安装后再继续。"
+    error "无法连接 Kubernetes 集群，请检查 kubeconfig/current-context。"
     all_ok=false
   fi
 
   # 检查必要文件
   local required_files=(
-    "${SCRIPT_DIR}/docker-compose.yml.tpl"
+    "${SCRIPT_DIR}/k8s/costrict.yaml.tpl"
     "${SCRIPT_DIR}/scripts/newest-images.list"
     "${SCRIPT_DIR}/configure.sh"
   )
@@ -76,13 +183,7 @@ cmd_check() {
   fi
 
   # 检查重要环境变量配置，如果为空，会导致较复杂的问题
-  # 这些变量通常由 source ./configure.sh 注入
-  if [[ -f "${SCRIPT_DIR}/configure.sh" ]]; then
-    # shellcheck source=configure.sh
-    source "${SCRIPT_DIR}/configure.sh"
-  else
-    warn "configure.sh 不存在，环境变量可能未设置。"
-  fi
+  load_config
 
   _check_env() {
     local var="$1"
@@ -96,7 +197,10 @@ cmd_check() {
 
   local env_vars=(
     "COSTRICT_BACKEND"
-    "PORT_APISIX_ENTRY"
+    "K8S_NAMESPACE"
+    "K8S_INGRESS_CLASS_NAME"
+    "K8S_APISIX_HOST"
+    "K8S_NACOS_HOST"
   )
   for v in "${env_vars[@]}"; do
     _check_env "${v}"
@@ -106,9 +210,18 @@ cmd_check() {
     die "存在必填环境变量未配置，请编辑 configure.sh 后重试。"
   fi
 
-  bash ./docker-download-images.sh
-  if [[ $? -ne 0 ]]; then
-    die "镜像检查未通过"
+  local default_sc
+  default_sc="$(kubectl get storageclass -o jsonpath='{range .items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")]}{.metadata.name}{" "}{end}' 2>/dev/null || true)"
+  if [[ -n "${default_sc}" ]]; then
+    success "默认 StorageClass：${default_sc}"
+  else
+    warn "未检测到默认 StorageClass，PVC 可能无法自动创建 PV。请先配置默认 StorageClass，或手工给 PVC 指定 storageClassName。"
+  fi
+
+  if kubectl get ingressclass "${K8S_INGRESS_CLASS_NAME}" &>/dev/null; then
+    success "IngressClass 存在：${K8S_INGRESS_CLASS_NAME}"
+  else
+    warn "未检测到 IngressClass：${K8S_INGRESS_CLASS_NAME}。如集群使用其他 IngressClass，请修改 configure.sh。"
   fi
 
   success "环境检查通过！"
@@ -122,23 +235,18 @@ cmd_prepare() {
   info "开始准备部署环境..."
 
   # 运行配置脚本，set -a 使所有变量自动 export 到子进程
-  if [[ -f "${SCRIPT_DIR}/configure.sh" ]]; then
-    # shellcheck source=configure.sh
-    source "${SCRIPT_DIR}/configure.sh"
-  else
-    die "configure.sh 不存在，请在 configure.sh 中配置后重试。"
-  fi
+  load_config
 
   # 解析模板
   if [[ -f "${SCRIPT_DIR}/scripts/template_gen.sh" ]]; then
     info "正在解析配置模板..."
-    bash "${SCRIPT_DIR}/scripts/template_gen.sh"
+    (cd "${SCRIPT_DIR}" && bash "${SCRIPT_DIR}/scripts/template_gen.sh")
     success "模板解析完成。"
   else
     die "scripts/template_gen.sh 不存在"
   fi
 
-  bash "${SCRIPT_DIR}/scripts/prepare_dir.sh" "${SCRIPT_DIR}"
+  prepare_portal_assets
   success "部署环境准备完毕！"
 }
 
@@ -147,9 +255,9 @@ cmd_prepare() {
 # -----------------------------------------------------------------------------
 
 cmd_user_reminder() {
-  info "管理用户访问 (casdoor) http://${COSTRICT_BACKEND}:${PORT_CASDOOR}/"
-  info "配置Chat模型请访问 (nacos) http://${COSTRICT_BACKEND}:${PORT_NACOS}/"
-  info "BaseUrl请设置为 http://${COSTRICT_BACKEND}:${PORT_APISIX_ENTRY}/"
+  info "管理用户访问 (casdoor) http://${K8S_APISIX_HOST}/casdoor/"
+  info "配置Chat模型请访问 (nacos) http://${K8S_NACOS_HOST}/"
+  info "BaseUrl请设置为 http://${K8S_APISIX_HOST}/"
 }
 
 # -----------------------------------------------------------------------------
@@ -161,39 +269,41 @@ cmd_install() {
   cmd_check
   cmd_prepare
 
-  # 检查docker-compose.yml文件是否存在
-  if [[ ! -f "${SCRIPT_DIR}/docker-compose.yml" ]]; then
-    die "安装异常docker-compose.yml 不存在"
+  # 检查 Kubernetes 清单文件是否存在
+  if [[ ! -f "${SCRIPT_DIR}/k8s/costrict.yaml" ]]; then
+    die "安装异常，k8s/costrict.yaml 不存在"
   fi
   info "开始安装..."
-  docker compose up -d
+  apply_k8s_configmaps
+  kubectl apply -f "${SCRIPT_DIR}/k8s/costrict.yaml"
   if [[ $? -ne 0 ]]; then
     die "安装异常"
   fi
-  info "容器启动结束，准配配置路由"
+  info "等待 Kubernetes 工作负载启动..."
+  wait_k8s_rollout || die "Kubernetes 工作负载启动异常"
+  sync_portal_assets
+  info "服务启动结束，准备配置路由"
   bash "${SCRIPT_DIR}/apisix_router_setting.sh"
   success "安装完成！"
   cmd_user_reminder
 }
 
 # -----------------------------------------------------------------------------
-# down — 停止并移除所有容器
+# down — 删除 Kubernetes 资源
 # -----------------------------------------------------------------------------
 cmd_down() {
-  info "正在停止所有服务..."
+  load_config
+  info "正在删除 Kubernetes 资源..."
 
-  local compose_file="${SCRIPT_DIR}/docker-compose.yml"
-  if [[ ! -f "${compose_file}" ]]; then
-    # 尝试模板文件
-    compose_file="${SCRIPT_DIR}/docker-compose.yml.tpl"
-    warn "docker-compose.yml 不存在，尝试使用 ${compose_file}"
+  local manifest="${SCRIPT_DIR}/k8s/costrict.yaml"
+  if [[ ! -f "${manifest}" ]]; then
+    die "k8s/costrict.yaml 不存在，请先执行 prepare"
   fi
 
-  if docker compose -f "${compose_file}" down "$@" 2>/dev/null || \
-     docker-compose -f "${compose_file}" down "$@" 2>/dev/null; then
-    success "所有服务已停止并移除。"
+  if kubectl delete -f "${manifest}" --ignore-not-found "$@"; then
+    success "Kubernetes 资源已删除。PVC 是否保留取决于集群 StorageClass 的回收策略。"
   else
-    die "停止服务失败，请检查 docker-compose 配置。"
+    die "删除服务失败，请检查 Kubernetes 配置。"
   fi
 }
 
@@ -201,20 +311,22 @@ cmd_down() {
 # up — 启动所有服务
 # -----------------------------------------------------------------------------
 cmd_up() {
+  load_config
   info "正在启动所有服务..."
 
-  local compose_file="${SCRIPT_DIR}/docker-compose.yml"
-  if [[ ! -f "${compose_file}" ]]; then
-    compose_file="${SCRIPT_DIR}/docker-compose.yml.tpl"
-    warn "docker-compose.yml 不存在，尝试使用 ${compose_file}"
+  local manifest="${SCRIPT_DIR}/k8s/costrict.yaml"
+  if [[ ! -f "${manifest}" ]]; then
+    die "k8s/costrict.yaml 不存在，请先执行 prepare"
   fi
 
-  if docker compose -f "${compose_file}" up -d "$@" 2>/dev/null || \
-     docker-compose -f "${compose_file}" up -d "$@" 2>/dev/null; then
+  apply_k8s_configmaps
+  if kubectl apply -f "${manifest}" "$@"; then
+    wait_k8s_rollout || die "Kubernetes 工作负载启动异常"
+    sync_portal_assets
     success "所有服务已启动。"
-    info "可通过 'docker compose ps' 查看容器状态。"
+    info "可通过 'kubectl -n ${K8S_NAMESPACE} get pods' 查看 Pod 状态。"
   else
-    die "启动服务失败，请检查 docker-compose 配置或日志。"
+    die "启动服务失败，请检查 Kubernetes 配置或日志。"
   fi
 }
 
@@ -226,19 +338,19 @@ usage() {
 用法: $(basename "$0") <command> [options]
 
 命令:
-  check    检查运行环境（docker、docker-compose、docker 镜像、必要文件等）
+  check    检查运行环境（kubectl、Kubernetes 集群、必要文件等）
   prepare  准备部署环境（解析模板、生成配置文件,创建文件夹等）或者 升级固定的配置文件
-  install  完整安装（执行 check + prepare + 启动服务(up)）
-  down     停止并移除所有容器（支持透传 docker-compose down 参数）
-  up       启动所有服务（支持透传 docker-compose up 参数）
+  install  完整安装（执行 check + prepare + kubectl apply）
+  down     删除 Kubernetes 资源（支持透传 kubectl delete 参数）
+  up       启动所有服务（支持透传 kubectl apply 参数）
   info     打印访问地址等提示信息
 
 示例:
   $(basename "$0") check
   $(basename "$0") prepare
   $(basename "$0") install
-  $(basename "$0") down --volumes
-  $(basename "$0") up -d
+  $(basename "$0") down
+  $(basename "$0") up
   $(basename "$0") info
 
 EOF

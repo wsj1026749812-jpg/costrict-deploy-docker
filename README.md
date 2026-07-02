@@ -4,11 +4,13 @@
 
 ## Project Overview
 
-CoStrict Backend Deployment Tool is an enterprise-level AI code assistant backend service deployment solution based on Docker Compose. This project provides a complete microservice architecture, including core components such as AI gateway, identity authentication, code analysis, and chat services, supporting both private deployment and cloud service modes.
+CoStrict Backend Deployment Tool is an enterprise-level AI code assistant backend service deployment solution based on Kubernetes. This project provides a complete microservice architecture, including core components such as AI gateway, identity authentication, code analysis, and chat services, supporting both private deployment and cloud service modes.
 
 > To view the deployment architecture, server requirements, environment requirements, model requirements, model download links, etc., please visit [Foreword](./docs/foreword.md)
 
 ## Quick Start
+
+Before you start, make sure you have a reachable Kubernetes cluster and a working `kubectl` context.
 
 ### 1. Get Deployment Configuration
 
@@ -38,7 +40,7 @@ Note, **./costrict-server** is the deployment directory,
 
 ### 2. Prepare Backend Service Images
 
-Note: if you are deploying in an offline environment, continue reading this section. If your server can access the full internet (including docker.io, quay.io, docker.elastic.co, etc.), you can skip this step — all images will be pulled automatically during deployment.
+Note: if you are deploying in an offline environment, continue reading this section. If your Kubernetes nodes can access the full internet (including docker.io, quay.io, docker.elastic.co, etc.), you can skip this step — all images will be pulled automatically during deployment.
 
 The images required by the CoStrict backend can be found in the `scripts/newest-images.list` file for a complete list. You can also pull these images manually.
 
@@ -52,7 +54,7 @@ https://pan.baidu.com/s/5H0ppvaTja4g2MKZs0Ki1-g
 
 Newest Version is: v0.0.3
 
-After downloading all tar packages and copying them to a directory on the server (e.g. /root/images), run:
+For multi-node clusters, push the images to an internal registry first, then update the image references in `scripts/newest-images.list`. For temporary offline validation, you can also copy the tar packages to every Kubernetes node and import them into the node container runtime:
 ```bash
 # /root/images is the directory containing the tar packages; please replace accordingly
 # scripts/load-images.sh is the script in the deployment directory, please find it yourself
@@ -78,6 +80,24 @@ For a quick start, you only need to configure one parameter — the server's IP 
 COSTRICT_BACKEND=""
 ```
 
+To change the Kubernetes namespace, edit:
+
+```sh
+K8S_NAMESPACE="costrict"
+```
+
+Multi-node deployments use PVCs and Ingress by default. Make sure the cluster has a default StorageClass and a working Ingress controller, then set the host names:
+
+```sh
+K8S_INGRESS_CLASS_NAME="nginx"
+K8S_APISIX_HOST="costrict.example.com"
+K8S_NACOS_HOST="nacos.costrict.example.com"
+K8S_GRAFANA_HOST="grafana.costrict.example.com"
+K8S_PROMETHEUS_HOST="prometheus.costrict.example.com"
+```
+
+If you use an internal registry, edit `scripts/newest-images.list`, replace the image references with the internal registry addresses, then run `bash costrict.sh prepare` again.
+
 
 ### 4. Service Deployment
 
@@ -85,6 +105,29 @@ A single command is all it takes to bring up all CoStrict services:
 ```sh
 bash costrict.sh install
 ```
+
+The deployment script generates `k8s/costrict.yaml`, creates ConfigMaps/PVCs/Ingress, and applies the resources with `kubectl apply`. To inspect Pod status:
+
+```sh
+kubectl -n costrict get pods
+```
+
+Inspect PVCs and Ingress:
+
+```sh
+kubectl -n costrict get pvc
+kubectl -n costrict get ingress
+```
+
+To remove the Kubernetes resources:
+
+```sh
+bash costrict.sh down
+```
+
+Note: the Kubernetes manifest mirrors the services that were actually started by the original `docker-compose.yml.tpl`. The repository still contains historical `quota-manager` config and an APISIX route script, but the original Docker Compose setup did not start the `quota-manager` backend, and that config still references the removed `higress` gateway, so it is not included in the default manifest.
+
+Warning: `bash costrict.sh down` deletes Kubernetes resources. Whether PVC data is retained depends on the reclaim policy of your StorageClass.
 
 When the process completes, output similar to the following will be displayed — save it somewhere:
 

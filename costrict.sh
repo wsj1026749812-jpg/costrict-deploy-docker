@@ -31,12 +31,14 @@ load_config() {
   export COSTRICT_DEPLOY_DIR="${COSTRICT_DEPLOY_DIR:-${SCRIPT_DIR}}"
   export K8S_NAMESPACE="${K8S_NAMESPACE:-costrict}"
   export K8S_APISIX_HOST="${K8S_APISIX_HOST:-${COSTRICT_BACKEND}}"
+  export K8S_INGRESS_HTTP_PORT="${K8S_INGRESS_HTTP_PORT:-${PORT_APISIX_ENTRY}}"
 }
 
 apply_configmap() {
   local name="$1"
   shift
-  kubectl -n "${K8S_NAMESPACE}" create configmap "${name}" "$@" --dry-run=client -o yaml | kubectl apply -f -
+  kubectl -n "${K8S_NAMESPACE}" delete configmap "${name}" --ignore-not-found
+  kubectl -n "${K8S_NAMESPACE}" create configmap "${name}" "$@"
 }
 
 apply_k8s_configmaps() {
@@ -197,9 +199,12 @@ cmd_check() {
 
   local env_vars=(
     "COSTRICT_BACKEND"
+    "PORT_APISIX_ENTRY"
     "K8S_NAMESPACE"
     "K8S_INGRESS_CLASS_NAME"
+    "K8S_INGRESS_HTTP_PORT"
     "K8S_APISIX_HOST"
+    "K8S_CASDOOR_HOST"
     "K8S_NACOS_HOST"
   )
   for v in "${env_vars[@]}"; do
@@ -255,9 +260,9 @@ cmd_prepare() {
 # -----------------------------------------------------------------------------
 
 cmd_user_reminder() {
-  info "管理用户访问 (casdoor) http://${K8S_APISIX_HOST}/casdoor/"
-  info "配置Chat模型请访问 (nacos) http://${K8S_NACOS_HOST}/"
-  info "BaseUrl请设置为 http://${K8S_APISIX_HOST}/"
+  info "管理用户访问 (casdoor) http://${K8S_CASDOOR_HOST}:${K8S_INGRESS_HTTP_PORT}/"
+  info "配置Chat模型请访问 (nacos) http://${K8S_NACOS_HOST}:${K8S_INGRESS_HTTP_PORT}/"
+  info "BaseUrl请设置为 http://${K8S_APISIX_HOST}:${K8S_INGRESS_HTTP_PORT}/"
 }
 
 # -----------------------------------------------------------------------------

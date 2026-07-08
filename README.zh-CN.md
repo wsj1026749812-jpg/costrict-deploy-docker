@@ -91,7 +91,9 @@ K8S_NAMESPACE="costrict"
 
 ```sh
 K8S_INGRESS_CLASS_NAME="nginx"
+K8S_INGRESS_HTTP_PORT="30080"
 K8S_APISIX_HOST="costrict.example.com"
+K8S_CASDOOR_HOST="casdoor.costrict.example.com"
 K8S_NACOS_HOST="nacos.costrict.example.com"
 K8S_GRAFANA_HOST="grafana.costrict.example.com"
 K8S_PROMETHEUS_HOST="prometheus.costrict.example.com"
@@ -138,6 +140,14 @@ bash costrict.sh down
 [INFO]  配置Chat模型请访问 (nacos) http://192.168.79.130:31808/
 [INFO]  BaseUrl请设置 http://192.168.79.130:39080/
 
+```
+
+Kubernetes Ingress NodePort 部署时，访问地址类似：
+
+```
+[INFO]  管理用户访问 (casdoor) http://casdoor.costrict.local:30080/
+[INFO]  配置Chat模型请访问 (nacos) http://nacos.costrict.local:30080/
+[INFO]  BaseUrl请设置为 http://costrict.local:30080/
 ```
 
 ## 服务配置

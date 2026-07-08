@@ -9,6 +9,7 @@ metadata:
   name: etcd-data
   namespace: {{K8S_NAMESPACE}}
 spec:
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
   accessModes:
     - ReadWriteOnce
   resources:
@@ -21,6 +22,7 @@ metadata:
   name: redis-data
   namespace: {{K8S_NAMESPACE}}
 spec:
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
   accessModes:
     - ReadWriteOnce
   resources:
@@ -33,6 +35,7 @@ metadata:
   name: postgres-data
   namespace: {{K8S_NAMESPACE}}
 spec:
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
   accessModes:
     - ReadWriteOnce
   resources:
@@ -45,6 +48,7 @@ metadata:
   name: portal-data
   namespace: {{K8S_NAMESPACE}}
 spec:
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
   accessModes:
     - ReadWriteOnce
   resources:
@@ -57,6 +61,7 @@ metadata:
   name: chat-rag-logs
   namespace: {{K8S_NAMESPACE}}
 spec:
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
   accessModes:
     - ReadWriteOnce
   resources:
@@ -69,6 +74,7 @@ metadata:
   name: oidc-auth-logs
   namespace: {{K8S_NAMESPACE}}
 spec:
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
   accessModes:
     - ReadWriteOnce
   resources:
@@ -896,6 +902,16 @@ spec:
                 name: apisix
                 port:
                   number: 9080
+    - host: {{K8S_CASDOOR_HOST}}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: casdoor
+                port:
+                  number: 8000
     - host: {{K8S_NACOS_HOST}}
       http:
         paths:

@@ -2,8 +2,10 @@
 #---------------------------------------------------------
 # CoStrict服务端设置，http://${COSTRICT_BACKEND}:${PORT_APISIX_ENTRY} 将成为为你的BaseUrl
 #---------------------------------------------------------
-COSTRICT_BACKEND=""
-PORT_APISIX_ENTRY="39080"
+COSTRICT_BACKEND="costrict.local"
+# K8s ingress-nginx 当前通过 NodePort 暴露 HTTP，80 -> 30080。
+# 如果后续改成内网 DNS + 80/443 入口，可以同步修改这里。
+PORT_APISIX_ENTRY="30080"
 # nacos管理端口,如果对此不了解，就不需要修改.
 PORT_NACOS="31808"
 
@@ -135,14 +137,17 @@ COSTRICT_BACKEND_BASEURL="http://${COSTRICT_BACKEND}:${PORT_APISIX_ENTRY}"
 K8S_NAMESPACE="costrict"
 # Ingress 控制器类名，请按集群实际情况修改，常见值：nginx、traefik
 K8S_INGRESS_CLASS_NAME="nginx"
-# 通过 Ingress 暴露的域名。请提前配置 DNS 或 /etc/hosts 指向 Ingress 入口 IP。
-K8S_APISIX_HOST="costrict.local"
+# ingress-nginx HTTP NodePort。你当前集群为 80:30080/TCP。
+K8S_INGRESS_HTTP_PORT="${PORT_APISIX_ENTRY}"
+# 通过 Ingress 暴露的域名。请提前配置 DNS 或 /etc/hosts 指向 Ingress NodePort 可访问的节点 IP。
+K8S_APISIX_HOST="${COSTRICT_BACKEND}"
+K8S_CASDOOR_HOST="casdoor.costrict.local"
 K8S_NACOS_HOST="nacos.costrict.local"
 K8S_GRAFANA_HOST="grafana.costrict.local"
 K8S_PROMETHEUS_HOST="prometheus.costrict.local"
-# K8s Ingress 模式下客户端访问后端的 Base URL
-COSTRICT_BACKEND_BASEURL="http://${K8S_APISIX_HOST}"
-# PVC 容量。默认使用集群默认 StorageClass；如果集群没有默认 StorageClass，需要先创建或手工修改 PVC。
+# PVC StorageClass。当前静态 PV 场景保持空字符串；动态存储可改为 longhorn、nfs-client 等。
+K8S_STORAGE_CLASS_NAME=""
+# PVC 容量。静态 PV 容量必须大于等于这里的请求容量。
 K8S_PVC_ETCD_SIZE="10Gi"
 K8S_PVC_REDIS_SIZE="5Gi"
 K8S_PVC_POSTGRES_SIZE="50Gi"

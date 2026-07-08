@@ -90,7 +90,9 @@ Multi-node deployments use PVCs and Ingress by default. Make sure the cluster ha
 
 ```sh
 K8S_INGRESS_CLASS_NAME="nginx"
+K8S_INGRESS_HTTP_PORT="30080"
 K8S_APISIX_HOST="costrict.example.com"
+K8S_CASDOOR_HOST="casdoor.costrict.example.com"
 K8S_NACOS_HOST="nacos.costrict.example.com"
 K8S_GRAFANA_HOST="grafana.costrict.example.com"
 K8S_PROMETHEUS_HOST="prometheus.costrict.example.com"
@@ -136,6 +138,14 @@ When the process completes, output similar to the following will be displayed â€
 [INFO]  Configure Chat model at (nacos): http://192.168.79.130:31808/
 [INFO]  Set BaseUrl to: http://192.168.79.130:39080/
 
+```
+
+For Kubernetes Ingress NodePort deployments, the URLs look like:
+
+```
+[INFO]  Admin user access (casdoor) http://casdoor.costrict.local:30080/
+[INFO]  Configure Chat model at (nacos) http://nacos.costrict.local:30080/
+[INFO]  Set BaseUrl to http://costrict.local:30080/
 ```
 
 ## Service Configuration

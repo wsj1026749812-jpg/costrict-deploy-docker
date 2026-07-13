@@ -1,11 +1,13 @@
 #!/bin/sh
 #---------------------------------------------------------
-# CoStrict服务端设置，http://${COSTRICT_BACKEND}:${PORT_APISIX_ENTRY} 将成为为你的BaseUrl
+# CoStrict服务端设置，COSTRICT_BACKEND_BASEURL 将成为你的 BaseUrl
 #---------------------------------------------------------
-COSTRICT_BACKEND="costrict.local"
-# K8s ingress-nginx 当前通过 NodePort 暴露 HTTP，80 -> 30080。
-# 如果后续改成内网 DNS + 80/443 入口，可以同步修改这里。
-PORT_APISIX_ENTRY="30080"
+# 对外访问域名。正式环境建议使用内网 DNS 域名，端口在下方 K8S_NODEPORT_* 中配置。
+COSTRICT_BACKEND="dicode.byd.com"
+# 对外访问协议。如果域名端口前面没有 HTTPS 终止代理，这里应改为 http。
+COSTRICT_BACKEND_SCHEME="https"
+# APISIX 对外访问端口，会用于插件 BaseUrl。
+PORT_APISIX_ENTRY="30091"
 # nacos管理端口,如果对此不了解，就不需要修改.
 PORT_NACOS="31808"
 
@@ -55,6 +57,18 @@ PORT_GRAFANA="33000"
 PORT_REDIS="36379"
 PORT_PROMETHEUS="39090"
 PORT_ES="39200"
+
+#---------------------------------------------------------
+# 对外域名端口。可由内网域名服务/代理映射到下方 K8S_NODEPORT_*。
+# 例如外部 dicode.byd.com:39009 可以映射到任一节点的 30009。
+#---------------------------------------------------------
+EXTERNAL_PORT_APISIX="${PORT_APISIX_ENTRY}"
+EXTERNAL_PORT_CASDOOR="${PORT_CASDOOR}"
+EXTERNAL_PORT_NACOS="${PORT_NACOS}"
+EXTERNAL_PORT_GRAFANA="${PORT_GRAFANA}"
+EXTERNAL_PORT_PROMETHEUS="${PORT_PROMETHEUS}"
+EXTERNAL_PORT_OIDC_AUTH="30093"
+EXTERNAL_PORT_CHATRAG="30094"
 
 #---------------------------------------------------------
 # 私有镜像仓库设置
@@ -125,10 +139,8 @@ OIDC_TOKEN_ENDPOINT=""
 #-------------------------------------------------------------------------------
 #   以下设置请根据部署环境信息进行修改
 #-------------------------------------------------------------------------------
-# VSCODE扩展连接诸葛神码后端时使用的入口URL地址
-# 一般会利用DNS及应用发布设备将该地址映射到 Ingress 暴露的 APISIX 入口
-# 诸葛神码后端的IP地址，`deploy.sh --auto-ip`可自动获取
-COSTRICT_BACKEND_BASEURL="http://${COSTRICT_BACKEND}:${PORT_APISIX_ENTRY}"
+# VSCODE扩展连接诸葛神码后端时使用的入口URL地址，指向 APISIX 入口。
+COSTRICT_BACKEND_BASEURL="${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_APISIX}"
 
 #---------------------------------------------------------
 # Kubernetes 设置
@@ -137,14 +149,27 @@ COSTRICT_BACKEND_BASEURL="http://${COSTRICT_BACKEND}:${PORT_APISIX_ENTRY}"
 K8S_NAMESPACE="costrict"
 # Ingress 控制器类名，请按集群实际情况修改，常见值：nginx、traefik
 K8S_INGRESS_CLASS_NAME="nginx"
-# ingress-nginx HTTP NodePort。你当前集群为 80:30080/TCP。
-K8S_INGRESS_HTTP_PORT="${PORT_APISIX_ENTRY}"
-# 通过 Ingress 暴露的域名。请提前配置 DNS 或 /etc/hosts 指向 Ingress NodePort 可访问的节点 IP。
+# APISIX 对外 Ingress 域名和 TLS Secret。TLS Secret 需提前在 K8S_NAMESPACE 下创建。
 K8S_APISIX_HOST="${COSTRICT_BACKEND}"
-K8S_CASDOOR_HOST="casdoor.costrict.local"
-K8S_NACOS_HOST="nacos.costrict.local"
-K8S_GRAFANA_HOST="grafana.costrict.local"
-K8S_PROMETHEUS_HOST="prometheus.costrict.local"
+K8S_APISIX_TLS_SECRET_NAME="dicode-byd-com-tls"
+# 调度设置：有状态服务固定到一个静态 PV 所在节点，其余服务调度到 org=dicode 节点池。
+K8S_NODE_SELECTOR_KEY="org"
+K8S_NODE_SELECTOR_VALUE="dicode"
+K8S_STATEFUL_NODE_NAME="gcyai-work7-ip51-t4x2-2288hv5"
+# 静态 PV 在有状态节点上的基础目录。hostPath DirectoryOrCreate 会在 Pod 启动挂载时自动创建目录。
+K8S_STATIC_PV_BASE_PATH="/export/costrict"
+# 直接 NodePort 暴露的访问端口。APISIX 是插件 BaseUrl，OIDC/Auth 和 Chat-RAG 供 CLI 等客户端直连。
+K8S_NODEPORT_APISIX="${PORT_APISIX_ENTRY}"
+K8S_NODEPORT_CASDOOR="30009"
+K8S_NODEPORT_NACOS="${PORT_NACOS}"
+K8S_NODEPORT_GRAFANA="30000"
+K8S_NODEPORT_PROMETHEUS="30092"
+K8S_NODEPORT_OIDC_AUTH="30093"
+K8S_NODEPORT_CHATRAG="30094"
+# CLI/客户端直连服务地址。域名服务侧需要把这些端口映射到对应 NodePort。
+CASDOOR_EXTERNAL_BASEURL="${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_CASDOOR}"
+OIDC_AUTH_EXTERNAL_BASEURL="${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_OIDC_AUTH}"
+CHATRAG_EXTERNAL_BASEURL="${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_CHATRAG}"
 # PVC StorageClass。当前静态 PV 场景保持空字符串；动态存储可改为 longhorn、nfs-client 等。
 K8S_STORAGE_CLASS_NAME=""
 # PVC 容量。静态 PV 容量必须大于等于这里的请求容量。

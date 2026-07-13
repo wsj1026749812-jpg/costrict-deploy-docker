@@ -1,4 +1,142 @@
 apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: costrict-etcd-data-pv
+spec:
+  capacity:
+    storage: {{K8S_PVC_ETCD_SIZE}}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
+  hostPath:
+    path: {{K8S_STATIC_PV_BASE_PATH}}/etcd
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - "{{K8S_STATEFUL_NODE_NAME}}"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: costrict-redis-data-pv
+spec:
+  capacity:
+    storage: {{K8S_PVC_REDIS_SIZE}}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
+  hostPath:
+    path: {{K8S_STATIC_PV_BASE_PATH}}/redis
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - "{{K8S_STATEFUL_NODE_NAME}}"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: costrict-postgres-data-pv
+spec:
+  capacity:
+    storage: {{K8S_PVC_POSTGRES_SIZE}}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
+  hostPath:
+    path: {{K8S_STATIC_PV_BASE_PATH}}/postgres
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - "{{K8S_STATEFUL_NODE_NAME}}"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: costrict-portal-data-pv
+spec:
+  capacity:
+    storage: {{K8S_PVC_PORTAL_SIZE}}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
+  hostPath:
+    path: {{K8S_STATIC_PV_BASE_PATH}}/portal
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - "{{K8S_STATEFUL_NODE_NAME}}"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: costrict-chat-rag-logs-pv
+spec:
+  capacity:
+    storage: {{K8S_PVC_CHATRAG_LOGS_SIZE}}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
+  hostPath:
+    path: {{K8S_STATIC_PV_BASE_PATH}}/chat-rag-logs
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - "{{K8S_STATEFUL_NODE_NAME}}"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: costrict-oidc-auth-logs-pv
+spec:
+  capacity:
+    storage: {{K8S_PVC_OIDC_AUTH_LOGS_SIZE}}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "{{K8S_STORAGE_CLASS_NAME}}"
+  hostPath:
+    path: {{K8S_STATIC_PV_BASE_PATH}}/oidc-auth-logs
+    type: DirectoryOrCreate
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - "{{K8S_STATEFUL_NODE_NAME}}"
+---
+apiVersion: v1
 kind: Namespace
 metadata:
   name: {{K8S_NAMESPACE}}
@@ -111,6 +249,9 @@ spec:
       labels:
         app: etcd
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
+        kubernetes.io/hostname: "{{K8S_STATEFUL_NODE_NAME}}"
       containers:
         - name: etcd
           image: {{IMAGE_ETCD}}
@@ -163,6 +304,9 @@ spec:
       labels:
         app: redis
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
+        kubernetes.io/hostname: "{{K8S_STATEFUL_NODE_NAME}}"
       containers:
         - name: redis
           image: {{IMAGE_REDIS}}
@@ -211,6 +355,9 @@ spec:
       labels:
         app: postgres
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
+        kubernetes.io/hostname: "{{K8S_STATEFUL_NODE_NAME}}"
       containers:
         - name: postgres
           image: {{IMAGE_POSTGRES}}
@@ -263,6 +410,21 @@ spec:
       port: 9849
       targetPort: 9849
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos-nodeport
+  namespace: {{K8S_NAMESPACE}}
+spec:
+  type: NodePort
+  selector:
+    app: nacos
+  ports:
+    - name: console
+      port: 8080
+      targetPort: 8080
+      nodePort: {{K8S_NODEPORT_NACOS}}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -280,6 +442,8 @@ spec:
       labels:
         app: nacos
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
       containers:
         - name: nacos
           image: {{IMAGE_NACOS}}
@@ -342,6 +506,21 @@ spec:
       port: 9091
       targetPort: 9091
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-gateway-nodeport
+  namespace: {{K8S_NAMESPACE}}
+spec:
+  type: NodePort
+  selector:
+    app: apisix
+  ports:
+    - name: gateway
+      port: 9080
+      targetPort: 9080
+      nodePort: {{K8S_NODEPORT_APISIX}}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -359,6 +538,8 @@ spec:
       labels:
         app: apisix
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
       containers:
         - name: apisix
           image: {{IMAGE_APISIX}}
@@ -413,6 +594,8 @@ spec:
       labels:
         app: model-proxy
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
       containers:
         - name: model-proxy
           image: {{IMAGE_MODEL_PROXY}}
@@ -459,6 +642,9 @@ spec:
       labels:
         app: portal
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
+        kubernetes.io/hostname: "{{K8S_STATEFUL_NODE_NAME}}"
       containers:
         - name: portal
           image: {{IMAGE_NGINX}}
@@ -496,6 +682,21 @@ spec:
       port: 8888
       targetPort: 8888
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-rag-nodeport
+  namespace: {{K8S_NAMESPACE}}
+spec:
+  type: NodePort
+  selector:
+    app: chat-rag
+  ports:
+    - name: http
+      port: 8888
+      targetPort: 8888
+      nodePort: {{K8S_NODEPORT_CHATRAG}}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -513,6 +714,9 @@ spec:
       labels:
         app: chat-rag
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
+        kubernetes.io/hostname: "{{K8S_STATEFUL_NODE_NAME}}"
       containers:
         - name: chat-rag
           image: {{IMAGE_CHATRAG}}
@@ -573,6 +777,8 @@ spec:
       labels:
         app: credit-manager
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
       containers:
         - name: credit-manager
           image: {{IMAGE_CREDIT_MANAGER}}
@@ -601,6 +807,21 @@ spec:
       port: 8080
       targetPort: 8080
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oidc-auth-nodeport
+  namespace: {{K8S_NAMESPACE}}
+spec:
+  type: NodePort
+  selector:
+    app: oidc-auth
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: {{K8S_NODEPORT_OIDC_AUTH}}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -618,19 +839,22 @@ spec:
       labels:
         app: oidc-auth
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
+        kubernetes.io/hostname: "{{K8S_STATEFUL_NODE_NAME}}"
       containers:
         - name: oidc-auth
           image: {{IMAGE_OIDC_AUTH}}
           imagePullPolicy: IfNotPresent
           env:
             - name: SERVER_BASEURL
-              value: "{{COSTRICT_BACKEND_BASEURL}}"
+              value: "{{OIDC_AUTH_EXTERNAL_BASEURL}}"
             - name: PROVIDERS_CASDOOR_CLIENTID
               value: "{{OIDC_AUTH_CLIENT_ID}}"
             - name: PROVIDERS_CASDOOR_CLIENTSECRET
               value: "{{OIDC_AUTH_CLIENT_SECRET}}"
             - name: PROVIDERS_CASDOOR_BASEURL
-              value: "{{COSTRICT_BACKEND_BASEURL}}"
+              value: "{{CASDOOR_EXTERNAL_BASEURL}}"
             - name: PROVIDERS_CASDOOR_INTERNALURL
               value: "{{OIDC_CASDOOR_ADDR}}"
             - name: SMS_ENABLEDTEST
@@ -704,6 +928,8 @@ spec:
       labels:
         app: code-completion
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
       containers:
         - name: code-completion
           image: {{IMAGE_CODE_COMPLETION}}
@@ -737,6 +963,21 @@ spec:
       port: 8000
       targetPort: 8000
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: casdoor-nodeport
+  namespace: {{K8S_NAMESPACE}}
+spec:
+  type: NodePort
+  selector:
+    app: casdoor
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      nodePort: {{K8S_NODEPORT_CASDOOR}}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -754,6 +995,8 @@ spec:
       labels:
         app: casdoor
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
       containers:
         - name: casdoor
           image: {{IMAGE_CASDOOR}}
@@ -780,6 +1023,21 @@ spec:
       port: 9090
       targetPort: 9090
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-nodeport
+  namespace: {{K8S_NAMESPACE}}
+spec:
+  type: NodePort
+  selector:
+    app: prometheus
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
+      nodePort: {{K8S_NODEPORT_PROMETHEUS}}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -797,6 +1055,8 @@ spec:
       labels:
         app: prometheus
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
       containers:
         - name: prometheus
           image: {{IMAGE_PROMETHEUS}}
@@ -829,6 +1089,21 @@ spec:
       port: 3000
       targetPort: 3000
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-nodeport
+  namespace: {{K8S_NAMESPACE}}
+spec:
+  type: NodePort
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+      nodePort: {{K8S_NODEPORT_GRAFANA}}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -846,6 +1121,8 @@ spec:
       labels:
         app: grafana
     spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
       containers:
         - name: grafana
           image: {{IMAGE_GRAFANA}}
@@ -891,6 +1168,10 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: {{K8S_INGRESS_CLASS_NAME}}
+  tls:
+    - hosts:
+        - {{K8S_APISIX_HOST}}
+      secretName: {{K8S_APISIX_TLS_SECRET_NAME}}
   rules:
     - host: {{K8S_APISIX_HOST}}
       http:
@@ -902,43 +1183,3 @@ spec:
                 name: apisix
                 port:
                   number: 9080
-    - host: {{K8S_CASDOOR_HOST}}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: casdoor
-                port:
-                  number: 8000
-    - host: {{K8S_NACOS_HOST}}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: nacos
-                port:
-                  number: 8080
-    - host: {{K8S_GRAFANA_HOST}}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: grafana
-                port:
-                  number: 3000
-    - host: {{K8S_PROMETHEUS_HOST}}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: prometheus
-                port:
-                  number: 9090

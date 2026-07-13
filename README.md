@@ -86,16 +86,30 @@ To change the Kubernetes namespace, edit:
 K8S_NAMESPACE="costrict"
 ```
 
-Multi-node deployments use PVCs and Ingress by default. Make sure the cluster has a default StorageClass and a working Ingress controller, then set the host names:
+Multi-node deployments use PVCs and expose client/CLI entrypoints as `domain + external port`. `EXTERNAL_PORT_*` is the port users access on `dicode.byd.com`; `K8S_NODEPORT_*` is the Kubernetes NodePort. If they differ, map the external port to the NodePort in your internal DNS/proxy layer.
 
 ```sh
+COSTRICT_BACKEND="dicode.byd.com"
+COSTRICT_BACKEND_SCHEME="https"
+EXTERNAL_PORT_APISIX="30091"
+EXTERNAL_PORT_CASDOOR="39009"
+EXTERNAL_PORT_NACOS="31808"
+EXTERNAL_PORT_OIDC_AUTH="30093"
+EXTERNAL_PORT_CHATRAG="30094"
+COSTRICT_BACKEND_BASEURL="${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_APISIX}"
 K8S_INGRESS_CLASS_NAME="nginx"
-K8S_INGRESS_HTTP_PORT="30080"
-K8S_APISIX_HOST="costrict.example.com"
-K8S_CASDOOR_HOST="casdoor.costrict.example.com"
-K8S_NACOS_HOST="nacos.costrict.example.com"
-K8S_GRAFANA_HOST="grafana.costrict.example.com"
-K8S_PROMETHEUS_HOST="prometheus.costrict.example.com"
+K8S_APISIX_HOST="${COSTRICT_BACKEND}"
+K8S_APISIX_TLS_SECRET_NAME="dicode-byd-com-tls"
+K8S_NODE_SELECTOR_KEY="org"
+K8S_NODE_SELECTOR_VALUE="dicode"
+K8S_STATEFUL_NODE_NAME="gcyai-work7-ip51-t4x2-2288hv5"
+K8S_NODEPORT_APISIX="30091"
+K8S_NODEPORT_CASDOOR="30009"
+K8S_NODEPORT_NACOS="31808"
+K8S_NODEPORT_GRAFANA="30000"
+K8S_NODEPORT_PROMETHEUS="30092"
+K8S_NODEPORT_OIDC_AUTH="30093"
+K8S_NODEPORT_CHATRAG="30094"
 ```
 
 If you use an internal registry, edit `scripts/newest-images.list`, replace the image references with the internal registry addresses, then run `bash costrict.sh prepare` again.
@@ -108,17 +122,17 @@ A single command is all it takes to bring up all CoStrict services:
 bash costrict.sh install
 ```
 
-The deployment script generates `k8s/costrict.yaml`, creates ConfigMaps/PVCs/Ingress, and applies the resources with `kubectl apply`. To inspect Pod status:
+The deployment script generates `k8s/costrict.yaml`, creates ConfigMaps/PVCs/Deployments/Services/Ingress/NodePorts, and applies the resources with `kubectl apply`. To inspect Pod status:
 
 ```sh
 kubectl -n costrict get pods
 ```
 
-Inspect PVCs and Ingress:
+Inspect PVCs and NodePorts:
 
 ```sh
 kubectl -n costrict get pvc
-kubectl -n costrict get ingress
+kubectl -n costrict get svc
 ```
 
 To remove the Kubernetes resources:
@@ -140,12 +154,14 @@ When the process completes, output similar to the following will be displayed â€
 
 ```
 
-For Kubernetes Ingress NodePort deployments, the URLs look like:
+For Kubernetes deployments, the URLs look like:
 
 ```
-[INFO]  Admin user access (casdoor) http://casdoor.costrict.local:30080/
-[INFO]  Configure Chat model at (nacos) http://nacos.costrict.local:30080/
-[INFO]  Set BaseUrl to http://costrict.local:30080/
+[INFO]  Set BaseUrl to https://dicode.byd.com:30091/
+[INFO]  Casdoor admin entry: https://dicode.byd.com:39009/
+[INFO]  OIDC/Auth external entry: https://dicode.byd.com:30093/
+[INFO]  Chat-RAG external entry: https://dicode.byd.com:30094/
+[INFO]  Configure Chat model at (nacos) https://dicode.byd.com:31808/
 ```
 
 ## Service Configuration

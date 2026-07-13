@@ -87,16 +87,30 @@ COSTRICT_BACKEND=""
 K8S_NAMESPACE="costrict"
 ```
 
-多节点部署默认使用 PVC 和 Ingress。请确认集群已有默认 StorageClass 和可用 Ingress 控制器，并按实际域名修改：
+多节点部署默认使用 PVC，并使用“域名 + 外部端口”的方式暴露客户端和 CLI 入口。`EXTERNAL_PORT_*` 是用户访问 `dicode.byd.com` 时看到的端口，`K8S_NODEPORT_*` 是 Kubernetes 实际暴露的 NodePort；如果两者不同，需要在内网域名服务或前置代理中做端口映射。
 
 ```sh
+COSTRICT_BACKEND="dicode.byd.com"
+COSTRICT_BACKEND_SCHEME="https"
+EXTERNAL_PORT_APISIX="30091"
+EXTERNAL_PORT_CASDOOR="39009"
+EXTERNAL_PORT_NACOS="31808"
+EXTERNAL_PORT_OIDC_AUTH="30093"
+EXTERNAL_PORT_CHATRAG="30094"
+COSTRICT_BACKEND_BASEURL="${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_APISIX}"
 K8S_INGRESS_CLASS_NAME="nginx"
-K8S_INGRESS_HTTP_PORT="30080"
-K8S_APISIX_HOST="costrict.example.com"
-K8S_CASDOOR_HOST="casdoor.costrict.example.com"
-K8S_NACOS_HOST="nacos.costrict.example.com"
-K8S_GRAFANA_HOST="grafana.costrict.example.com"
-K8S_PROMETHEUS_HOST="prometheus.costrict.example.com"
+K8S_APISIX_HOST="${COSTRICT_BACKEND}"
+K8S_APISIX_TLS_SECRET_NAME="dicode-byd-com-tls"
+K8S_NODE_SELECTOR_KEY="org"
+K8S_NODE_SELECTOR_VALUE="dicode"
+K8S_STATEFUL_NODE_NAME="gcyai-work7-ip51-t4x2-2288hv5"
+K8S_NODEPORT_APISIX="30091"
+K8S_NODEPORT_CASDOOR="30009"
+K8S_NODEPORT_NACOS="31808"
+K8S_NODEPORT_GRAFANA="30000"
+K8S_NODEPORT_PROMETHEUS="30092"
+K8S_NODEPORT_OIDC_AUTH="30093"
+K8S_NODEPORT_CHATRAG="30094"
 ```
 
 如果使用内网镜像仓库，请修改 `scripts/newest-images.list`，将镜像地址替换为内网仓库地址，然后重新执行 `bash costrict.sh prepare`。
@@ -110,17 +124,17 @@ K8S_PROMETHEUS_HOST="prometheus.costrict.example.com"
 bash costrict.sh install
 ```
 
-部署脚本会生成 `k8s/costrict.yaml`，创建 ConfigMap/PVC/Ingress，并通过 `kubectl apply` 创建资源。查看 Pod 状态：
+部署脚本会生成 `k8s/costrict.yaml`，创建 ConfigMap/PVC/Deployment/Service/Ingress/NodePort，并通过 `kubectl apply` 创建资源。查看 Pod 状态：
 
 ```sh
 kubectl -n costrict get pods
 ```
 
-查看 PVC 和 Ingress：
+查看 PVC 和 NodePort：
 
 ```sh
 kubectl -n costrict get pvc
-kubectl -n costrict get ingress
+kubectl -n costrict get svc
 ```
 
 卸载 Kubernetes 资源：
@@ -142,12 +156,14 @@ bash costrict.sh down
 
 ```
 
-Kubernetes Ingress NodePort 部署时，访问地址类似：
+Kubernetes 部署时，访问地址类似：
 
 ```
-[INFO]  管理用户访问 (casdoor) http://casdoor.costrict.local:30080/
-[INFO]  配置Chat模型请访问 (nacos) http://nacos.costrict.local:30080/
-[INFO]  BaseUrl请设置为 http://costrict.local:30080/
+[INFO]  BaseUrl请设置为 https://dicode.byd.com:30091/
+[INFO]  Casdoor管理入口：https://dicode.byd.com:39009/
+[INFO]  OIDC/Auth外部入口：https://dicode.byd.com:30093/
+[INFO]  Chat-RAG外部入口：https://dicode.byd.com:30094/
+[INFO]  配置Chat模型请访问 (nacos) https://dicode.byd.com:31808/
 ```
 
 ## 服务配置

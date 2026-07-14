@@ -45,8 +45,8 @@ load_config() {
   export EXTERNAL_PORT_CHATRAG="${EXTERNAL_PORT_CHATRAG:-${K8S_NODEPORT_CHATRAG}}"
   export COSTRICT_BACKEND_BASEURL="${COSTRICT_BACKEND_BASEURL:-${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_APISIX}}"
   export CASDOOR_EXTERNAL_BASEURL="${CASDOOR_EXTERNAL_BASEURL:-${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_CASDOOR}}"
-  export OIDC_AUTH_EXTERNAL_BASEURL="${OIDC_AUTH_EXTERNAL_BASEURL:-${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_OIDC_AUTH}}"
-  export CHATRAG_EXTERNAL_BASEURL="${CHATRAG_EXTERNAL_BASEURL:-${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_CHATRAG}}"
+  export OIDC_AUTH_EXTERNAL_BASEURL="${OIDC_AUTH_EXTERNAL_BASEURL:-${COSTRICT_BACKEND_BASEURL}}"
+  export CHATRAG_EXTERNAL_BASEURL="${CHATRAG_EXTERNAL_BASEURL:-${COSTRICT_BACKEND_BASEURL}}"
   export K8S_NODE_SELECTOR_KEY="${K8S_NODE_SELECTOR_KEY:-org}"
   export K8S_NODE_SELECTOR_VALUE="${K8S_NODE_SELECTOR_VALUE:-dicode}"
 }
@@ -309,9 +309,9 @@ cmd_prepare() {
 cmd_user_reminder() {
   info "BaseUrl请设置为 ${COSTRICT_BACKEND_BASEURL}/"
   info "Casdoor管理入口：${CASDOOR_EXTERNAL_BASEURL}/"
-  info "OIDC/Auth外部入口：${OIDC_AUTH_EXTERNAL_BASEURL}/"
-  info "Chat-RAG外部入口：${CHATRAG_EXTERNAL_BASEURL}/"
-  info "OA/Casdoor回调地址请优先使用 ${OIDC_AUTH_EXTERNAL_BASEURL}/callback 或具体应用要求的 ${OIDC_AUTH_EXTERNAL_BASEURL} 下路径"
+  info "OIDC/Auth统一入口：${OIDC_AUTH_EXTERNAL_BASEURL}/oidc-auth/"
+  info "Chat-RAG统一入口：${CHATRAG_EXTERNAL_BASEURL}/chat-rag/"
+  info "OA/Casdoor回调地址请使用 ${OIDC_AUTH_EXTERNAL_BASEURL}/oidc-auth/api/v1/plugin/login/callback 等 /oidc-auth 下路径"
   info "配置Chat模型请访问 (nacos) ${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_NACOS}/"
   info "端口映射关系：APISIX ${EXTERNAL_PORT_APISIX}->${K8S_NODEPORT_APISIX}, Casdoor ${EXTERNAL_PORT_CASDOOR}->${K8S_NODEPORT_CASDOOR}, OIDC ${EXTERNAL_PORT_OIDC_AUTH}->${K8S_NODEPORT_OIDC_AUTH}, Chat-RAG ${EXTERNAL_PORT_CHATRAG}->${K8S_NODEPORT_CHATRAG}"
 }
@@ -339,7 +339,9 @@ cmd_install() {
   wait_k8s_rollout || die "Kubernetes 工作负载启动异常"
   sync_portal_assets
   info "服务启动结束，准备配置路由"
-  bash "${SCRIPT_DIR}/apisix_router_setting.sh"
+  if ! bash "${SCRIPT_DIR}/apisix_router_setting.sh"; then
+    die "APISIX 路由配置失败。请检查 APISIX Pod 日志和 /tmp/costrict-apisix-port-forward.log。"
+  fi
   success "安装完成！"
   cmd_user_reminder
 }

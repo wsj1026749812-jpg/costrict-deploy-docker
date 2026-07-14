@@ -6,7 +6,7 @@
 COSTRICT_BACKEND="dicode.byd.com"
 # 对外访问协议。如果域名端口前面没有 HTTPS 终止代理，这里应改为 http。
 COSTRICT_BACKEND_SCHEME="https"
-# APISIX 对外访问端口，会用于插件 BaseUrl。
+# APISIX 在 Kubernetes 中暴露的 NodePort。
 PORT_APISIX_ENTRY="30091"
 # nacos管理端口,如果对此不了解，就不需要修改.
 PORT_NACOS="31808"
@@ -62,7 +62,8 @@ PORT_ES="39200"
 # 对外域名端口。可由内网域名服务/代理映射到下方 K8S_NODEPORT_*。
 # 例如外部 dicode.byd.com:39009 可以映射到任一节点的 30009。
 #---------------------------------------------------------
-EXTERNAL_PORT_APISIX="${PORT_APISIX_ENTRY}"
+# APISIX 对客户端暴露的外部端口，可由内网域名服务/代理映射到 K8s NodePort。
+EXTERNAL_PORT_APISIX="30092"
 EXTERNAL_PORT_CASDOOR="${PORT_CASDOOR}"
 EXTERNAL_PORT_NACOS="${PORT_NACOS}"
 EXTERNAL_PORT_GRAFANA="${PORT_GRAFANA}"
@@ -158,7 +159,7 @@ K8S_NODE_SELECTOR_VALUE="dicode"
 K8S_STATEFUL_NODE_NAME="gcyai-work7-ip51-t4x2-2288hv5"
 # 静态 PV 在有状态节点上的基础目录。hostPath DirectoryOrCreate 会在 Pod 启动挂载时自动创建目录。
 K8S_STATIC_PV_BASE_PATH="/export/costrict"
-# 直接 NodePort 暴露的访问端口。APISIX 是插件 BaseUrl，OIDC/Auth 和 Chat-RAG 供 CLI 等客户端直连。
+# 直接 NodePort 暴露的访问端口。正式客户端入口统一走 APISIX；OIDC/Auth 和 Chat-RAG NodePort 仅用于调试或兼容。
 K8S_NODEPORT_APISIX="${PORT_APISIX_ENTRY}"
 K8S_NODEPORT_CASDOOR="30009"
 K8S_NODEPORT_NACOS="${PORT_NACOS}"
@@ -166,10 +167,10 @@ K8S_NODEPORT_GRAFANA="30000"
 K8S_NODEPORT_PROMETHEUS="30092"
 K8S_NODEPORT_OIDC_AUTH="30093"
 K8S_NODEPORT_CHATRAG="30094"
-# CLI/客户端直连服务地址。域名服务侧需要把这些端口映射到对应 NodePort。
+# 外部访问地址。客户端、OIDC 回调和 Chat-RAG 默认统一走 APISIX 入口。
 CASDOOR_EXTERNAL_BASEURL="${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_CASDOOR}"
-OIDC_AUTH_EXTERNAL_BASEURL="${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_OIDC_AUTH}"
-CHATRAG_EXTERNAL_BASEURL="${COSTRICT_BACKEND_SCHEME}://${COSTRICT_BACKEND}:${EXTERNAL_PORT_CHATRAG}"
+OIDC_AUTH_EXTERNAL_BASEURL="${COSTRICT_BACKEND_BASEURL}"
+CHATRAG_EXTERNAL_BASEURL="${COSTRICT_BACKEND_BASEURL}"
 # PVC StorageClass。当前静态 PV 场景保持空字符串；动态存储可改为 longhorn、nfs-client 等。
 K8S_STORAGE_CLASS_NAME=""
 # PVC 容量。静态 PV 容量必须大于等于这里的请求容量。

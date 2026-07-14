@@ -29,8 +29,16 @@ wait_for_apisix() {
   local attempt=0
   echo "Waiting for APISIX Admin API to be ready (http://${APISIX_ADDR}) ..."
   while [ $attempt -lt $max_retries ]; do
+    if ! kill -0 "${PF_PID}" >/dev/null 2>&1; then
+      echo "ERROR: APISIX port-forward exited unexpectedly:" >&2
+      sed 's/^/  /' "${PF_LOG}" >&2
+      return 1
+    fi
+
     local http_code
     http_code=$(curl -s -o /dev/null -w "%{http_code}" \
+      --connect-timeout 2 \
+      --max-time 5 \
       -H "${AUTH}" \
       "http://${APISIX_ADDR}/apisix/admin/routes")
     if [ "$http_code" = "200" ]; then
@@ -42,15 +50,28 @@ wait_for_apisix() {
     sleep $interval
   done
   echo "ERROR: APISIX Admin API was not ready within $((max_retries * interval))s, aborting route setup." >&2
-  exit 1
+  echo "Port-forward log:" >&2
+  sed 's/^/  /' "${PF_LOG}" >&2
+  return 1
 }
 
 if [ "$SKIP_WAIT" = false ]; then
-  kubectl -n "${K8S_NAMESPACE}" port-forward svc/apisix "${PORT_APISIX_API}:9180" >/tmp/costrict-apisix-port-forward.log 2>&1 &
+  APISIX_POD=$(kubectl -n "${K8S_NAMESPACE}" get pod \
+    -l app=apisix \
+    --field-selector=status.phase=Running \
+    -o jsonpath='{.items[0].metadata.name}')
+  if [ -z "${APISIX_POD}" ]; then
+    echo "ERROR: No running APISIX Pod was found in namespace ${K8S_NAMESPACE}." >&2
+    exit 1
+  fi
+
+  PF_LOG="/tmp/costrict-apisix-port-forward.log"
+  : >"${PF_LOG}"
+  kubectl -n "${K8S_NAMESPACE}" port-forward "pod/${APISIX_POD}" "${PORT_APISIX_API}:9180" >"${PF_LOG}" 2>&1 &
   PF_PID=$!
   trap 'kill ${PF_PID} >/dev/null 2>&1 || true' EXIT
   sleep 2
-  wait_for_apisix
+  wait_for_apisix || exit 1
 fi
 
 "${SCRIPT_DIR}/scripts/apisix_router/ai-gateway.sh"

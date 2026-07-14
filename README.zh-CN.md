@@ -87,12 +87,12 @@ COSTRICT_BACKEND=""
 K8S_NAMESPACE="costrict"
 ```
 
-多节点部署默认使用 PVC，并使用“域名 + 外部端口”的方式暴露客户端和 CLI 入口。`EXTERNAL_PORT_*` 是用户访问 `dicode.byd.com` 时看到的端口，`K8S_NODEPORT_*` 是 Kubernetes 实际暴露的 NodePort；如果两者不同，需要在内网域名服务或前置代理中做端口映射。
+多节点部署默认使用 PVC，并使用 APISIX 统一入口暴露客户端、OIDC/Auth 回调和 Chat-RAG。`EXTERNAL_PORT_*` 是用户访问 `dicode.byd.com` 时看到的端口，`K8S_NODEPORT_*` 是 Kubernetes 实际暴露的 NodePort；如果两者不同，需要在内网域名服务或前置代理中做端口映射。
 
 ```sh
 COSTRICT_BACKEND="dicode.byd.com"
 COSTRICT_BACKEND_SCHEME="https"
-EXTERNAL_PORT_APISIX="30091"
+EXTERNAL_PORT_APISIX="30092"
 EXTERNAL_PORT_CASDOOR="39009"
 EXTERNAL_PORT_NACOS="31808"
 EXTERNAL_PORT_OIDC_AUTH="30093"
@@ -159,10 +159,10 @@ bash costrict.sh down
 Kubernetes 部署时，访问地址类似：
 
 ```
-[INFO]  BaseUrl请设置为 https://dicode.byd.com:30091/
+[INFO]  BaseUrl请设置为 https://dicode.byd.com:30092/
 [INFO]  Casdoor管理入口：https://dicode.byd.com:39009/
-[INFO]  OIDC/Auth外部入口：https://dicode.byd.com:30093/
-[INFO]  Chat-RAG外部入口：https://dicode.byd.com:30094/
+[INFO]  OIDC/Auth统一入口：https://dicode.byd.com:30092/oidc-auth/
+[INFO]  Chat-RAG统一入口：https://dicode.byd.com:30092/chat-rag/
 [INFO]  配置Chat模型请访问 (nacos) https://dicode.byd.com:31808/
 ```
 

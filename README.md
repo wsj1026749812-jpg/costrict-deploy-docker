@@ -91,7 +91,7 @@ Multi-node deployments use PVCs and expose client/CLI entrypoints as `domain + e
 ```sh
 COSTRICT_BACKEND="dicode.byd.com"
 COSTRICT_BACKEND_SCHEME="https"
-EXTERNAL_PORT_APISIX="30091"
+EXTERNAL_PORT_APISIX="30092"
 EXTERNAL_PORT_CASDOOR="39009"
 EXTERNAL_PORT_NACOS="31808"
 EXTERNAL_PORT_OIDC_AUTH="30093"
@@ -157,10 +157,10 @@ When the process completes, output similar to the following will be displayed â€
 For Kubernetes deployments, the URLs look like:
 
 ```
-[INFO]  Set BaseUrl to https://dicode.byd.com:30091/
+[INFO]  Set BaseUrl to https://dicode.byd.com:30092/
 [INFO]  Casdoor admin entry: https://dicode.byd.com:39009/
-[INFO]  OIDC/Auth external entry: https://dicode.byd.com:30093/
-[INFO]  Chat-RAG external entry: https://dicode.byd.com:30094/
+[INFO]  OIDC/Auth unified entry: https://dicode.byd.com:30092/oidc-auth/
+[INFO]  Chat-RAG unified entry: https://dicode.byd.com:30092/chat-rag/
 [INFO]  Configure Chat model at (nacos) https://dicode.byd.com:31808/
 ```
 

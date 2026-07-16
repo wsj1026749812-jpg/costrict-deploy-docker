@@ -14,6 +14,11 @@ context:
     includeContent: false
   requestTimeout: 400ms
   totalTimeout: 500ms
+auth:
+  keyServiceURL: "http://10.0.135.45:30022/api/opentoken/key/condition"
+  keyServiceToken: "RBgAtwG5qJsnAmWg/IFA/vkSu8x+"
+  cacheTTL: 1h
+  cleanupInterval: 1m
 models:
   - completionsUrl: "{{COMPLETION_BASEURL}}"
     provider: deepseek

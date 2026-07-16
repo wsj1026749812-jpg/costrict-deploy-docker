@@ -42,6 +42,17 @@ nacos:
 VIPPriority:
   enabled: true
 
+newTokenAuth:
+  enabled: true
+  endpoint: "http://10.0.135.45:30022/api/opentoken/key/condition"
+  headerName: "NEW-OPEN-TOKEN"
+  openToken: "RBgAtwG5qJsnAmWg/IFA/vkSu8x+"
+  fixedEmail: "chen.xiujian@byd.com"
+  cacheKey: "chat_rag:new_token_auth"
+  cacheTTLSeconds: 3600
+  timeoutMs: 3000
+  authScheme: "Bearer"
+
 chatMetrics:
   enabled: false
   url: ""

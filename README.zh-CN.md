@@ -160,7 +160,7 @@ Kubernetes 部署时，访问地址类似：
 
 ```
 [INFO]  BaseUrl请设置为 https://dicode.byd.com:30092/
-[INFO]  Casdoor管理入口：https://dicode.byd.com:39009/
+[INFO]  Casdoor统一入口：https://dicode.byd.com:30092/
 [INFO]  OIDC/Auth统一入口：https://dicode.byd.com:30092/oidc-auth/
 [INFO]  Chat-RAG统一入口：https://dicode.byd.com:30092/chat-rag/
 [INFO]  配置Chat模型请访问 (nacos) https://dicode.byd.com:31808/

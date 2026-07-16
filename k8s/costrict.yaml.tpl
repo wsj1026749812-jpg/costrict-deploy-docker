@@ -720,7 +720,7 @@ spec:
       containers:
         - name: chat-rag
           image: {{IMAGE_CHATRAG}}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command: ["/app/chat-rag", "-f", "/app/etc/chat-api.yaml"]
           ports:
             - name: http
@@ -845,7 +845,7 @@ spec:
       containers:
         - name: oidc-auth
           image: {{IMAGE_OIDC_AUTH}}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           env:
             - name: SERVER_BASEURL
               value: "{{OIDC_AUTH_EXTERNAL_BASEURL}}"
@@ -933,7 +933,7 @@ spec:
       containers:
         - name: code-completion
           image: {{IMAGE_CODE_COMPLETION}}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           env:
             - name: TZ
               value: "Asia/Shanghai"
@@ -1000,7 +1000,7 @@ spec:
       containers:
         - name: casdoor
           image: {{IMAGE_CASDOOR}}
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           env:
             - name: driverName
               value: "postgres"

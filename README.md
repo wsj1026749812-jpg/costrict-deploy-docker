@@ -158,7 +158,7 @@ For Kubernetes deployments, the URLs look like:
 
 ```
 [INFO]  Set BaseUrl to https://dicode.byd.com:30092/
-[INFO]  Casdoor admin entry: https://dicode.byd.com:39009/
+[INFO]  Casdoor unified entry: https://dicode.byd.com:30092/
 [INFO]  OIDC/Auth unified entry: https://dicode.byd.com:30092/oidc-auth/
 [INFO]  Chat-RAG unified entry: https://dicode.byd.com:30092/chat-rag/
 [INFO]  Configure Chat model at (nacos) https://dicode.byd.com:31808/

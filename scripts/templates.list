@@ -8,3 +8,4 @@ config/portal/nginx.conf.tpl
 config/prometheus/prometheus.yml.tpl
 config/quota-manager/app-conf.yml.tpl
 k8s/costrict.yaml.tpl
+k8s/loki-promtail.yaml.tpl

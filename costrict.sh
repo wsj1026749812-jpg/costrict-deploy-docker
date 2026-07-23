@@ -67,6 +67,8 @@ apply_k8s_configmaps() {
     --from-file=config.yaml="${SCRIPT_DIR}/config/apisix/config.yaml"
   apply_configmap costrict-model-proxy-config \
     --from-file=config.yaml="${SCRIPT_DIR}/config/model-proxy/config.yaml"
+  apply_configmap costrict-issue-manager-config \
+    --from-file=config.local.yaml="${SCRIPT_DIR}/config/issue-manager/issue-manager-config.yaml"
   apply_configmap costrict-portal-nginx-config \
     --from-file=nginx.conf="${SCRIPT_DIR}/config/portal/nginx.conf"
   apply_configmap costrict-chat-rag-config \
@@ -137,6 +139,7 @@ wait_k8s_rollout() {
     nacos
     apisix
     model-proxy
+    issue-manager
     portal
     chat-rag
     credit-manager

@@ -19,3 +19,18 @@ curl -i  http://$APISIX_ADDR/apisix/admin/routes -H "$AUTH" -H "$TYPE" -X PUT -d
     "uris": ["/issue/*"],
     "upstream_id": "portal"
   }'
+
+curl -i http://$APISIX_ADDR/apisix/admin/upstreams -H "$AUTH" -H "$TYPE" -X PUT -d '{
+    "id": "issue-manager",
+    "nodes": {
+      "issue-manager:8080": 1
+    },
+    "type": "roundrobin"
+  }'
+
+curl -i http://$APISIX_ADDR/apisix/admin/routes -H "$AUTH" -H "$TYPE" -X PUT -d '{
+    "id": "issue-manager",
+    "name": "issue-manager-api",
+    "uris": ["/issue-manager/*"],
+    "upstream_id": "issue-manager"
+  }'

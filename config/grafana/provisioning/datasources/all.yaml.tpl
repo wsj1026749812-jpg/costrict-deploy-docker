@@ -31,3 +31,10 @@ datasources:
     index: '[metrics-]YYYY.MM.DD'
     interval: Daily
     timeField: '@timestamp'
+ - name: Loki
+   type: loki
+   access: proxy
+   url: http://loki:3100
+   editable: true
+   jsonData:
+    maxLines: 1000

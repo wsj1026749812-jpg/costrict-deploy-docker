@@ -615,6 +615,55 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: issue-manager
+  namespace: {{K8S_NAMESPACE}}
+spec:
+  selector:
+    app: issue-manager
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: issue-manager
+  namespace: {{K8S_NAMESPACE}}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: issue-manager
+  template:
+    metadata:
+      labels:
+        app: issue-manager
+    spec:
+      nodeSelector:
+        {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
+      containers:
+        - name: issue-manager
+          image: {{IMAGE_ISSUE_MANAGER}}
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - name: issue-manager-config
+              mountPath: /app/config/config.local.yaml
+              subPath: config.local.yaml
+              readOnly: true
+      volumes:
+        - name: issue-manager-config
+          configMap:
+            name: costrict-issue-manager-config
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: portal
   namespace: {{K8S_NAMESPACE}}
 spec:

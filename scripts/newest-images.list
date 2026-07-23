@@ -12,3 +12,6 @@ IMAGE_CODE_COMPLETION=zgsm/code-completion:v1.7.105
 IMAGE_OIDC_AUTH=zgsm/oidc-auth:v1.2.12
 IMAGE_CREDIT_MANAGER=zgsm/credit-manager:v1.3.23
 IMAGE_NACOS=zgsm/nacos-server:v0.0.6
+IMAGE_ISSUE_MANAGER=registry.byd.com/public/dicode/zgsm/issue-manager:2.1.1
+IMAGE_LOKI=grafana/loki:2.9.8
+IMAGE_PROMTAIL=grafana/promtail:2.9.8

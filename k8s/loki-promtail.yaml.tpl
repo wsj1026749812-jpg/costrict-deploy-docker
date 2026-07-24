@@ -135,6 +135,21 @@ spec:
       nodeSelector:
         {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
         kubernetes.io/hostname: "{{K8S_STATEFUL_NODE_NAME}}"
+      initContainers:
+        - name: init-loki-data-permissions
+          image: {{IMAGE_BUSYBOX}}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - mkdir -p /loki/rules /loki/rules-temp /loki/index /loki/boltdb-cache /loki/chunks /loki/compactor && chown -R 10001:10001 /loki
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: loki-data
+              mountPath: /loki
+      securityContext:
+        fsGroup: 10001
       containers:
         - name: loki
           image: {{IMAGE_LOKI}}

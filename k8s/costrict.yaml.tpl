@@ -752,9 +752,9 @@ metadata:
   name: chat-rag
   namespace: {{K8S_NAMESPACE}}
 spec:
-  replicas: 1
+  replicas: {{K8S_REPLICAS_CHATRAG}}
   strategy:
-    type: Recreate
+    type: RollingUpdate
   selector:
     matchLabels:
       app: chat-rag
@@ -765,7 +765,6 @@ spec:
     spec:
       nodeSelector:
         {{K8S_NODE_SELECTOR_KEY}}: "{{K8S_NODE_SELECTOR_VALUE}}"
-        kubernetes.io/hostname: "{{K8S_STATEFUL_NODE_NAME}}"
       containers:
         - name: chat-rag
           image: {{IMAGE_CHATRAG}}
@@ -785,10 +784,52 @@ spec:
               mountPath: /app/etc/rules.yaml
               subPath: rules.yaml
               readOnly: true
+        - name: chat-rag-conversation-log
+          image: {{IMAGE_BUSYBOX}}
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -ec
+            - |
+              processed=/tmp/chat-rag-conversation-log/processed
+              mkdir -p "$(dirname "$processed")"
+              touch "$processed"
+              while true; do
+                find /data/logs -type f -name "*.json" 2>/dev/null | sort | while IFS= read -r file; do
+                  grep -Fxq "$file" "$processed" && continue
+                  size_before=$(wc -c < "$file" 2>/dev/null || echo 0)
+                  sleep 1
+                  size_after=$(wc -c < "$file" 2>/dev/null || echo 0)
+                  [ "$size_before" = "$size_after" ] || continue
+
+                  rel=${file#/data/logs/}
+                  log_month=${rel%%/*}
+                  rest=${rel#*/}
+                  log_day=${rest%%/*}
+                  rest=${rest#*/}
+                  log_user=${rest%%/*}
+
+                  printf 'conversation_log log_month="%s" log_day="%s" log_user="%s" log_file="%s" payload=' "$log_month" "$log_day" "$log_user" "$file"
+                  tr '\n' ' ' < "$file"
+                  printf '\n'
+                  echo "$file" >> "$processed"
+                done
+                sleep 10
+              done
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: chat-rag-logs
+              mountPath: /data/logs
+              readOnly: true
       volumes:
         - name: chat-rag-logs
-          persistentVolumeClaim:
-            claimName: chat-rag-logs
+          emptyDir: {}
         - name: chat-rag-config
           configMap:
             name: costrict-chat-rag-config
@@ -944,8 +985,7 @@ spec:
               mountPath: /app/logs
       volumes:
         - name: oidc-auth-logs
-          persistentVolumeClaim:
-            claimName: oidc-auth-logs
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

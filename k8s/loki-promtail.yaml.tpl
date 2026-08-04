@@ -242,8 +242,12 @@ data:
         kubernetes_sd_configs:
           - role: pod
         pipeline_stages:
-          - cri: {}
+          - docker: {}
         relabel_configs:
+          - source_labels:
+              - __meta_kubernetes_pod_node_name
+            action: keep
+            regex: ${HOSTNAME}
           - source_labels:
               - __meta_kubernetes_namespace
             action: keep
@@ -264,11 +268,12 @@ data:
               - __meta_kubernetes_pod_label_app
             target_label: app
           - source_labels:
-              - __meta_kubernetes_pod_uid
+              - __meta_kubernetes_pod_name
+              - __meta_kubernetes_namespace
               - __meta_kubernetes_pod_container_name
-            separator: /
+            separator: _
             target_label: __path__
-            replacement: /var/log/pods/*$1/*.log
+            replacement: /var/log/containers/$1-*.log
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -302,6 +307,7 @@ spec:
           imagePullPolicy: IfNotPresent
           args:
             - -config.file=/etc/promtail/promtail.yaml
+            - -config.expand-env=true
           env:
             - name: HOSTNAME
               valueFrom:
@@ -327,6 +333,9 @@ spec:
             - name: containers
               mountPath: /var/log/containers
               readOnly: true
+            - name: docker-containers
+              mountPath: {{K8S_DOCKER_CONTAINER_LOG_PATH}}
+              readOnly: true
       volumes:
         - name: config
           configMap:
@@ -343,3 +352,7 @@ spec:
           hostPath:
             path: /var/log/containers
             type: DirectoryOrCreate
+        - name: docker-containers
+          hostPath:
+            path: {{K8S_DOCKER_CONTAINER_LOG_PATH}}
+            type: Directory

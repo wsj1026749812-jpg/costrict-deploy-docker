@@ -167,6 +167,7 @@ K8S_NODEPORT_GRAFANA="30000"
 K8S_NODEPORT_PROMETHEUS="30092"
 K8S_NODEPORT_OIDC_AUTH="30093"
 K8S_NODEPORT_CHATRAG="30094"
+K8S_REPLICAS_CHATRAG="2"
 # 外部访问地址。客户端、Casdoor 登录/回调、OIDC 回调和 Chat-RAG 默认统一走 APISIX 入口。
 CASDOOR_EXTERNAL_BASEURL="${COSTRICT_BACKEND_BASEURL}"
 OIDC_AUTH_EXTERNAL_BASEURL="${COSTRICT_BACKEND_BASEURL}"
@@ -182,3 +183,6 @@ K8S_PVC_CHATRAG_LOGS_SIZE="10Gi"
 K8S_PVC_OIDC_AUTH_LOGS_SIZE="5Gi"
 K8S_PVC_LOKI_SIZE="100Gi"
 LOKI_RETENTION_PERIOD="168h"
+# Docker runtime 日志真实目录。Promtail 会通过 /var/log/containers 的绝对符号链接读取这里的 json 日志。
+# 如节点上 `readlink -f /var/log/pods/.../0.log` 指向其他目录，请改成对应的 containers 目录。
+K8S_DOCKER_CONTAINER_LOG_PATH="/data/ai-data-01/container-data/docker/containers"

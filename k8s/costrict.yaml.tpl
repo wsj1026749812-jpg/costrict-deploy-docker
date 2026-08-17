@@ -810,9 +810,11 @@ spec:
                   log_user=${rest%%/*}
 
                   printf 'conversation_log log_month="%s" log_day="%s" log_user="%s" log_file="%s" payload=' "$log_month" "$log_day" "$log_user" "$file"
-                  tr '\n' ' ' < "$file"
+                  tr '\n' ' ' < "$file" || continue
                   printf '\n'
                   echo "$file" >> "$processed"
+                  rm -f "$file"
+                  find /data/logs -type d -empty -delete 2>/dev/null || true
                 done
                 sleep 10
               done
@@ -826,7 +828,6 @@ spec:
           volumeMounts:
             - name: chat-rag-logs
               mountPath: /data/logs
-              readOnly: true
       volumes:
         - name: chat-rag-logs
           emptyDir: {}
@@ -977,15 +978,29 @@ spec:
               value: "{{POSTGRES_USER}}"
             - name: ENCRYPT_AESKEY
               value: "pUD8mylndVVK7hTNt56VZMkNrppinbNg"
+            - name: ACCESSCONTROL_ENABLED
+              value: "{{OIDC_ACCESSCONTROL_ENABLED}}"
+            - name: ACCESSCONTROL_USERINFOURL
+              value: "{{OIDC_ACCESSCONTROL_USERINFOURL}}"
+            - name: ACCESSCONTROL_CLIENTID
+              value: "{{OIDC_ACCESSCONTROL_CLIENTID}}"
+            - name: ACCESSCONTROL_ALLOWEDDIVISIONS
+              value: "{{OIDC_ACCESSCONTROL_ALLOWEDDIVISIONS}}"
+            - name: ACCESSCONTROL_ALLOWEDFACTORIES
+              value: "{{OIDC_ACCESSCONTROL_ALLOWEDFACTORIES}}"
+            - name: ACCESSCONTROL_ALLOWEDDEPTS
+              value: "{{OIDC_ACCESSCONTROL_ALLOWEDDEPTS}}"
+            - name: ACCESSCONTROL_ALLOWEDSECTS
+              value: "{{OIDC_ACCESSCONTROL_ALLOWEDSECTS}}"
+            - name: ACCESSCONTROL_ALLOWEDMINIMUMORGS
+              value: "{{OIDC_ACCESSCONTROL_ALLOWEDMINIMUMORGS}}"
+            - name: ACCESSCONTROL_ALLOWEDUSERS
+              value: "{{OIDC_ACCESSCONTROL_ALLOWEDUSERS}}"
+            - name: ACCESSCONTROL_FAILCLOSED
+              value: "{{OIDC_ACCESSCONTROL_FAILCLOSED}}"
           ports:
             - name: http
               containerPort: 8080
-          volumeMounts:
-            - name: oidc-auth-logs
-              mountPath: /app/logs
-      volumes:
-        - name: oidc-auth-logs
-          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

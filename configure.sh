@@ -126,6 +126,18 @@ REDIS_ADDR="redis:6379"
 OIDC_AUTH_CLIENT_ID="9e2fc5d4fbcd52ef4f6f"
 # oidc-auth模块在casdoor中注册用的client secret
 OIDC_AUTH_CLIENT_SECRET="ab5d8ba28b0e6c0d6e971247cdc1deb269c9eea3"
+# OIDC 登录后访问控制。开启后 oidc-auth 会用登录 token 调信息中心接口，并按组织字段判断是否允许访问。
+OIDC_ACCESSCONTROL_ENABLED="true"
+OIDC_ACCESSCONTROL_USERINFOURL="https://gcytest.byd.com/gateway/auth-manager/user/getUserInfo"
+OIDC_ACCESSCONTROL_CLIENTID="client_id"
+# 以下放行条件为空表示不校验该项；多个值用英文逗号分隔。至少配置一个放行条件，否则会拒绝所有人。
+OIDC_ACCESSCONTROL_ALLOWEDDIVISIONS=""
+OIDC_ACCESSCONTROL_ALLOWEDFACTORIES=""
+OIDC_ACCESSCONTROL_ALLOWEDDEPTS="大数据研究部"
+OIDC_ACCESSCONTROL_ALLOWEDSECTS="信息化项目科"
+OIDC_ACCESSCONTROL_ALLOWEDMINIMUMORGS=""
+OIDC_ACCESSCONTROL_ALLOWEDUSERS="chen.xiujian@byd.com"
+OIDC_ACCESSCONTROL_FAILCLOSED="true"
 
 # apisix使用OIDC协议与casdoor通讯验证请求者身份
 OIDC_CLIENT_ID="9e2fc5d4fbcd52ef4f6f"
